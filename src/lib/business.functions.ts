@@ -203,6 +203,7 @@ export const listMyBusinesses = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("businesses")
       .select("*")
+      .eq("owner_id", context.userId) 
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     return (data ?? []) as unknown as BusinessRecord[];
@@ -272,12 +273,14 @@ export const deleteBusiness = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => DeleteInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
+    const { data: deleted, error } = await context.supabase
       .from("businesses")
       .delete()
       .eq("id", data.id)
-      .eq("owner_id", context.userId);
+      .eq("owner_id", context.userId)
+      .select("id");
     if (error) throw new Error(error.message);
+    if (!deleted?.length) throw new Error("Business not found or you don't own it.");
     return { id: data.id };
   });
 
